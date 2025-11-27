@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- html2pdf.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600&family=Nunito:wght@400;600;700&display=swap');
@@ -38,7 +40,7 @@
             background-color: #eff6ff;
         }
 
-        /* Colores específicos para niveles (Pasteles) */
+        /* Colores específicos para niveles */
         .btn-comenzando.selected { background-color: #fff7ed; border-color: #f97316; color: #c2410c; }
         .btn-desarrollando.selected { background-color: #fefce8; border-color: #eab308; color: #a16207; }
         .btn-consolidando.selected { background-color: #f0fdf4; border-color: #22c55e; color: #15803d; }
@@ -46,7 +48,7 @@
 
         .hidden { display: none; }
         
-        /* Estilos PDF */
+        /* Estilos específicos para la generación de PDF */
         #pdf-source {
             width: 100%;
             max-width: 800px; 
@@ -55,6 +57,7 @@
             color: #1f2937;
         }
         
+        /* Estilos para la tabla de datos en el PDF */
         .pdf-data-table td {
             padding-bottom: 8px;
             vertical-align: top;
@@ -69,7 +72,7 @@
             opacity: 1;
         }
         
-        /* Scrollbar */
+        /* Ajuste de scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -85,7 +88,7 @@
             background: #94a3b8; 
         }
         
-        /* Tooltip */
+        /* Tooltip personalizado */
         .custom-tooltip {
             visibility: hidden;
             opacity: 0;
@@ -126,8 +129,8 @@
 
         /* Estilos de botones de navegación dinámicos */
         .nav-btn-pending { border-left: 3px solid transparent; color: #64748b; }
-        .nav-btn-progress { background-color: #fffbeb; border-left: 3px solid #fbbf24; color: #b45309; } /* Pastel Yellow/Amber */
-        .nav-btn-complete { background-color: #f0fdf4; border-left: 3px solid #4ade80; color: #15803d; } /* Pastel Green */
+        .nav-btn-progress { background-color: #fffbeb; border-left: 3px solid #fbbf24; color: #b45309; } 
+        .nav-btn-complete { background-color: #f0fdf4; border-left: 3px solid #4ade80; color: #15803d; }
 
         @media print {
             .no-print { display: none !important; }
@@ -168,7 +171,7 @@
     <div class="flex items-start w-full no-print">
         
         <!-- Sidebar Navigation (Izquierda) -->
-        <aside class="w-64 bg-white border-r border-slate-200 h-screen sticky top-0 hidden md:flex flex-col flex-shrink-0 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+        <aside class="w-64 bg-white border-r border-slate-200 h-screen sticky top-0 flex flex-col flex-shrink-0 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
             <div class="flex-1 overflow-y-auto p-4">
                 <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 sticky top-0 bg-white py-2 z-10">Navegación</h3>
                 <div id="nav-container" class="space-y-1">
@@ -248,8 +251,10 @@
             </div>
         </main>
 
-        <!-- Live Report Sidebar (Derecha) -->
-        <aside class="w-80 bg-white border-l border-slate-200 h-screen sticky top-0 overflow-y-auto hidden lg:flex flex-col flex-shrink-0 z-20 shadow-[-4px_0_24px_rgba(0,0,0,0.02)]">
+        <!-- Live Report & Charts Sidebar (Derecha) -->
+        <aside class="w-96 bg-white border-l border-slate-200 h-screen sticky top-0 overflow-y-auto hidden lg:flex flex-col flex-shrink-0 z-20 shadow-[-4px_0_24px_rgba(0,0,0,0.02)]">
+            
+            <!-- Sección Vista Previa Texto -->
             <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 sticky top-0 z-10">
                 <h2 class="font-heading font-bold text-lg text-slate-800">Vista Previa</h2>
                 <button onclick="copyToClipboard()" class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1">
@@ -259,14 +264,41 @@
                     Copiar
                 </button>
             </div>
-            <div class="flex-1 overflow-y-auto p-6" id="report-content">
-                <div class="text-slate-400 text-center text-sm italic mt-10">
-                    Selecciona niveles de progreso para ver la narración aquí.
+            <div class="h-1/3 overflow-y-auto p-6 border-b border-slate-200" id="report-content">
+                <div class="text-slate-400 text-center text-sm italic mt-2">
+                    Selecciona niveles para ver la narración.
                 </div>
             </div>
-            <div class="p-4 border-t border-slate-200 bg-slate-50 text-xs text-slate-500 text-center sticky bottom-0 z-10">
-                Los textos se actualizan automáticamente.
+
+            <!-- Sección Gráficos -->
+            <div class="flex-1 bg-slate-50 p-4 overflow-y-auto">
+                <h3 class="font-heading font-bold text-slate-700 mb-4 text-center text-sm uppercase tracking-wider">Estadísticas por Ámbito</h3>
+                
+                <!-- Gráfico 1 -->
+                <div class="bg-white p-2 rounded-lg shadow-sm mb-4 border border-slate-100">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase mb-2 text-center">Desarrollo Personal y Social</p>
+                    <div class="h-40 relative">
+                        <canvas id="chart-ambito-1"></canvas>
+                    </div>
+                </div>
+
+                <!-- Gráfico 2 -->
+                <div class="bg-white p-2 rounded-lg shadow-sm mb-4 border border-slate-100">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase mb-2 text-center">Comunicación Integral</p>
+                    <div class="h-40 relative">
+                        <canvas id="chart-ambito-2"></canvas>
+                    </div>
+                </div>
+
+                <!-- Gráfico 3 -->
+                <div class="bg-white p-2 rounded-lg shadow-sm mb-4 border border-slate-100">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase mb-2 text-center">Interacción y Comprensión</p>
+                    <div class="h-40 relative">
+                        <canvas id="chart-ambito-3"></canvas>
+                    </div>
+                </div>
             </div>
+
         </aside>
 
     </div>
@@ -481,17 +513,15 @@
             let matrixData = {};
             const selections = {};
             let counts = { total: 0, byNucleo: {} };
+            let charts = {}; // Store chart instances
 
             // Parse CSV to JSON
             function parseCSV(csv) {
                 const lines = csv.trim().split('\n');
                 const result = {};
-                
-                // Skip header (i=1)
                 for (let i = 1; i < lines.length; i++) {
                     const row = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
                     if (!row) continue;
-                    
                     const ambito = row[0].replace(/"/g, '');
                     const nucleo = row[1].replace(/"/g, '');
                     const oa = row[2].replace(/"/g, '');
@@ -501,17 +531,14 @@
                     if (!result[ambito]) result[ambito] = {};
                     if (!result[ambito][nucleo]) result[ambito][nucleo] = {};
                     if (!result[ambito][nucleo][oa]) result[ambito][nucleo][oa] = {};
-                    
                     result[ambito][nucleo][oa][nivel] = desc;
                 }
                 return result;
             }
 
-            // Calculate total OAs
             function calculateCounts() {
                 counts.total = 0;
                 counts.byNucleo = {};
-
                 Object.keys(matrixData).forEach(ambito => {
                     Object.keys(matrixData[ambito]).forEach(nucleo => {
                         const oaCount = Object.keys(matrixData[ambito][nucleo]).length;
@@ -521,14 +548,99 @@
                 });
             }
 
+            // --- CHART FUNCTIONS ---
+            const ambitoKeys = [
+                "DESARROLLO PERSONAL Y SOCIAL",
+                "COMUNICACIÓN INTEGRAL",
+                "INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO"
+            ];
+
+            const levelColors = {
+                'Comenzando': '#fdba74',    // Orange 300
+                'Desarrollando': '#fde047', // Yellow 300
+                'Consolidando': '#86efac',  // Green 300
+                'Profundizando': '#93c5fd'  // Blue 300
+            };
+
+            function initCharts() {
+                Chart.defaults.font.family = "'Nunito', sans-serif";
+                Chart.defaults.font.size = 10;
+                
+                ambitoKeys.forEach((ambito, index) => {
+                    const ctx = document.getElementById(`chart-ambito-${index + 1}`).getContext('2d');
+                    charts[ambito] = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: [], // Nucleos
+                            datasets: []
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { stacked: true, grid: { display: false } },
+                                y: { stacked: true, beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } }
+                            },
+                            plugins: {
+                                legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true } },
+                                tooltip: { mode: 'index', intersect: false }
+                            }
+                        }
+                    });
+                });
+            }
+
+            function updateCharts() {
+                ambitoKeys.forEach(ambito => {
+                    if (!matrixData[ambito]) return;
+                    
+                    const chart = charts[ambito];
+                    const nucleos = Object.keys(matrixData[ambito]);
+                    
+                    // Prepare data buckets
+                    const dataComenzando = [];
+                    const dataDesarrollando = [];
+                    const dataConsolidando = [];
+                    const dataProfundizando = [];
+
+                    nucleos.forEach(nucleo => {
+                        let countC = 0, countD = 0, countCo = 0, countP = 0;
+                        
+                        if (selections[ambito] && selections[ambito][nucleo]) {
+                            Object.values(selections[ambito][nucleo]).forEach(val => {
+                                if (val.level === 'Comenzando') countC++;
+                                if (val.level === 'Desarrollando') countD++;
+                                if (val.level === 'Consolidando') countCo++;
+                                if (val.level === 'Profundizando') countP++;
+                            });
+                        }
+                        
+                        dataComenzando.push(countC);
+                        dataDesarrollando.push(countD);
+                        dataConsolidando.push(countCo);
+                        dataProfundizando.push(countP);
+                    });
+
+                    // Update Chart Data
+                    chart.data.labels = nucleos.map(n => n.replace('Lenguaje ', '').replace('Pensamiento ', '')); // Shorten labels if needed
+                    chart.data.datasets = [
+                        { label: 'Com.', data: dataComenzando, backgroundColor: levelColors['Comenzando'], borderRadius: 2 },
+                        { label: 'Des.', data: dataDesarrollando, backgroundColor: levelColors['Desarrollando'], borderRadius: 2 },
+                        { label: 'Con.', data: dataConsolidando, backgroundColor: levelColors['Consolidando'], borderRadius: 2 },
+                        { label: 'Pro.', data: dataProfundizando, backgroundColor: levelColors['Profundizando'], borderRadius: 2 }
+                    ];
+                    chart.update();
+                });
+            }
+
+
             // Initialize
             function init() {
                 matrixData = parseCSV(csvDataRaw);
                 calculateCounts();
                 renderNavigation();
                 renderMatrix();
-                
-                // Initial render of empty preview
+                initCharts(); // Init empty charts
                 updateReport();
                 
                 // Set default date
@@ -551,7 +663,6 @@
 
                     Object.keys(matrixData[ambito]).forEach(nucleo => {
                         const btn = document.createElement('button');
-                        // Added ID for dynamic styling updates
                         btn.id = `nav-btn-${nucleo.replace(/\s+/g, '-')}`;
                         btn.className = "w-full text-left px-3 py-2 text-sm text-slate-600 rounded hover:bg-slate-100 transition-colors truncate border-l-2 border-transparent nav-btn-pending";
                         btn.textContent = nucleo;
@@ -573,7 +684,6 @@
 
                 Object.keys(matrixData).forEach(ambito => {
                     Object.keys(matrixData[ambito]).forEach(nucleo => {
-                        
                         const section = document.createElement('section');
                         section.id = `nucleo-${nucleo.replace(/\s+/g, '-')}`;
                         section.className = "bg-white rounded-xl shadow-sm border border-slate-100 mb-8";
@@ -591,14 +701,11 @@
 
                         Object.keys(matrixData[ambito][nucleo]).forEach((oa, index) => {
                             const oaContainer = document.createElement('div');
-                            
-                            // OA Header
                             const oaTitle = document.createElement('h3');
                             oaTitle.className = "font-medium text-slate-900 mb-4 flex items-start gap-2";
                             oaTitle.innerHTML = `<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded mt-0.5">OA</span> ${oa}`;
                             oaContainer.appendChild(oaTitle);
 
-                            // Grid for Levels
                             const grid = document.createElement('div');
                             grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3";
 
@@ -612,39 +719,29 @@
 
                             levels.forEach(level => {
                                 if (!matrixData[ambito][nucleo][oa][level]) return;
-
                                 const card = document.createElement('button');
                                 const levelLower = level.toLowerCase();
                                 card.className = `level-card btn-${levelLower} ${colors[level]} w-full text-left p-3 rounded-lg border border-slate-200 text-xs text-slate-600 relative group`;
                                 card.dataset.oa = oa;
                                 card.dataset.level = level;
-                                // Native tooltip
                                 card.title = matrixData[ambito][nucleo][oa][level];
-                                
                                 const fullDesc = matrixData[ambito][nucleo][oa][level];
-                                
                                 card.innerHTML = `
                                     <div class="font-bold mb-1 capitalize">${level}</div>
                                     <div class="text-[10px] leading-tight opacity-70 line-clamp-3 overflow-hidden text-ellipsis">${fullDesc}</div>
-                                    <div class="custom-tooltip">
-                                        ${fullDesc}
-                                    </div>
+                                    <div class="custom-tooltip">${fullDesc}</div>
                                 `;
-
                                 card.onclick = () => selectLevel(ambito, nucleo, oa, level, card);
                                 grid.appendChild(card);
                             });
-
                             oaContainer.appendChild(grid);
                             content.appendChild(oaContainer);
-                            
                             if(index < Object.keys(matrixData[ambito][nucleo]).length - 1) {
                                 const hr = document.createElement('hr');
                                 hr.className = "border-slate-100 my-6";
                                 content.appendChild(hr);
                             }
                         });
-
                         section.appendChild(content);
                         container.appendChild(section);
                     });
@@ -670,10 +767,9 @@
                 updateReport();
             }
 
-            // Generate Report Text & Update Progress
+            // Generate Report Text
             function updateReport() {
                 const reportContainer = document.getElementById('report-content');
-                
                 let html = "";
                 let printHtml = "";
                 let hasContent = false;
@@ -688,18 +784,10 @@
                             hasContent = true;
                             totalSelected += numSelected;
                             
-                            const groupHtmlStart = `
-                                <div class="mb-6">
-                                    <h4 class="font-bold text-slate-800 text-sm border-b border-slate-200 pb-1 mb-2 uppercase">${nucleo}</h4>
-                                    <ul class="space-y-3 text-sm text-slate-600">
-                            `;
+                            const groupHtmlStart = `<div class="mb-6"><h4 class="font-bold text-slate-800 text-sm border-b border-slate-200 pb-1 mb-2 uppercase">${nucleo}</h4><ul class="space-y-3 text-sm text-slate-600">`;
                             const groupHtmlEnd = `</ul></div>`;
                             
-                            const pdfGroupStart = `
-                                <div style="margin-bottom: 24px; break-inside: avoid;">
-                                    <h3 style="font-weight: bold; text-transform: uppercase; font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; color: #1e293b;">${nucleo}</h3>
-                                    <ul style="list-style-type: none; padding: 0;">
-                            `;
+                            const pdfGroupStart = `<div style="margin-bottom: 24px; break-inside: avoid;"><h3 style="font-weight: bold; text-transform: uppercase; font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; color: #1e293b;">${nucleo}</h3><ul style="list-style-type: none; padding: 0;">`;
                             const pdfGroupEnd = `</ul></div>`;
 
                             let itemsHtml = "";
@@ -707,27 +795,14 @@
                             
                             selectedOAs.forEach(oa => {
                                 const data = selections[ambito][nucleo][oa];
-                                
-                                itemsHtml += `
-                                    <li class="bg-slate-50 p-3 rounded border border-slate-100">
-                                        <span class="text-xs font-bold text-blue-600 block mb-1">${data.level}</span>
-                                        ${data.text}
-                                    </li>
-                                `;
-
-                                pdfItemsHtml += `
-                                    <li style="margin-bottom: 12px; font-size: 12px;">
-                                        <div style="font-weight: bold; color: #2563eb; margin-bottom: 2px;">${oa} - ${data.level}</div>
-                                        <div style="color: #334155; text-align: justify;">${data.text}</div>
-                                    </li>
-                                `;
+                                itemsHtml += `<li class="bg-slate-50 p-3 rounded border border-slate-100"><span class="text-xs font-bold text-blue-600 block mb-1">${data.level}</span>${data.text}</li>`;
+                                pdfItemsHtml += `<li style="margin-bottom: 12px; font-size: 12px;"><div style="font-weight: bold; color: #2563eb; margin-bottom: 2px;">${oa} - ${data.level}</div><div style="color: #334155; text-align: justify;">${data.text}</div></li>`;
                             });
 
                             html += groupHtmlStart + itemsHtml + groupHtmlEnd;
                             printHtml += pdfGroupStart + pdfItemsHtml + pdfGroupEnd;
                         }
 
-                        // Update Navigation Colors per Nucleo
                         const btnId = `nav-btn-${nucleo.replace(/\s+/g, '-')}`;
                         const btn = document.getElementById(btnId);
                         if (btn) {
@@ -743,13 +818,13 @@
                     });
                 });
 
-                // Update Progress Bar
-                const percentage = Math.round((totalSelected / counts.total) * 100);
+                const percentage = counts.total > 0 ? Math.round((totalSelected / counts.total) * 100) : 0;
                 document.getElementById('progress-bar').style.width = `${percentage}%`;
                 document.getElementById('progress-percent').textContent = `${percentage}%`;
-                document.getElementById('progress-count').textContent = `${totalSelected}/${counts.total} Indicadores Seleccionados`;
+                document.getElementById('progress-count').textContent = `${totalSelected}/${counts.total} Indicadores`;
 
-                // Update Report Content
+                updateCharts();
+
                 if (!hasContent) {
                     reportContainer.innerHTML = '<div class="text-slate-400 text-center text-sm italic mt-10">Selecciona niveles de progreso para comenzar a generar el informe.</div>';
                     document.getElementById('print-content').innerHTML = '<p class="italic text-slate-500 text-center py-8">No se han seleccionado indicadores.</p>';
@@ -759,22 +834,14 @@
                 }
             }
 
-            // Update PDF data fields continuously
+            // Update PDF data fields
             function updatePDFHeaderData() {
-                const safeVal = (id) => {
-                    const el = document.getElementById(id);
-                    return el ? el.value : "________";
-                };
-
-                const setPdfText = (id, val) => {
-                    const el = document.getElementById(id);
-                    if(el) el.textContent = val || "________";
-                }
+                const safeVal = (id) => { const el = document.getElementById(id); return el ? el.value : "________"; };
+                const setPdfText = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val || "________"; }
 
                 setPdfText('pdf-student-name', safeVal('studentName'));
                 setPdfText('pdf-student-grade', safeVal('studentGrade'));
                 setPdfText('pdf-educator-name-header', safeVal('educatorName'));
-                
                 setPdfText('pdf-sign-educator-name', safeVal('educatorName'));
                 setPdfText('pdf-sign-director-name', safeVal('directorName'));
                 
@@ -785,7 +852,6 @@
                 } else {
                     setPdfText('pdf-delivery-date', "________");
                 }
-
                 setPdfText('pdf-eval-period', safeVal('evalPeriod'));
             }
 
@@ -794,44 +860,32 @@
                 if(el) el.addEventListener('input', updatePDFHeaderData);
             });
 
-            // Make global for button onclicks
+            // Make global
             window.exportToPDF = function() {
                 updatePDFHeaderData();
                 updateReport();
-
                 const element = document.getElementById('pdf-source');
                 const studentName = document.getElementById('studentName').value.trim() || "Estudiante";
                 const btn = document.getElementById('btn-export');
-                
                 const originalText = btn.innerHTML;
-                btn.innerHTML = `
-                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Generando...
-                `;
+                btn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Generando...`;
                 btn.disabled = true;
-
                 const opt = {
-                    margin:       [15, 15, 15, 15], 
-                    filename:     `Informe_${studentName.replace(/[^a-z0-9]/gi, '_')}.pdf`,
-                    image:        { type: 'jpeg', quality: 0.98 },
-                    html2canvas:  { scale: 2, useCORS: true, logging: false },
-                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                    pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+                    margin: [15, 15, 15, 15], 
+                    filename: `Informe_${studentName.replace(/[^a-z0-9]/gi, '_')}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, logging: false },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
                 };
-
                 const cloneWrapper = document.createElement('div');
                 cloneWrapper.style.position = 'absolute';
                 cloneWrapper.style.top = '-9999px';
                 cloneWrapper.style.left = '-9999px';
                 cloneWrapper.style.width = '780px'; 
-                
                 const clone = element.cloneNode(true);
                 cloneWrapper.appendChild(clone);
                 document.body.appendChild(cloneWrapper);
-
                 html2pdf().set(opt).from(clone).save().then(() => {
                     document.body.removeChild(cloneWrapper);
                     btn.innerHTML = originalText;
@@ -847,10 +901,8 @@
             window.copyToClipboard = function() {
                 const container = document.getElementById('report-content');
                 if (!container.innerText.trim()) return;
-
                 let text = "";
                 const groups = container.querySelectorAll('div.mb-6');
-                
                 groups.forEach(group => {
                     const title = group.querySelector('h4').innerText;
                     text += `\n[${title}]\n`;
@@ -860,7 +912,6 @@
                         text += `- ${cleanText}\n`;
                     });
                 });
-                
                 const textArea = document.createElement("textarea");
                 textArea.value = text;
                 textArea.style.position = "fixed";
@@ -868,7 +919,6 @@
                 document.body.appendChild(textArea);
                 textArea.focus();
                 textArea.select();
-
                 try {
                     const successful = document.execCommand('copy');
                     if(successful) alert("¡Informe copiado al portapapeles!");
@@ -880,11 +930,9 @@
                 document.body.removeChild(textArea);
             }
 
-            // Start initialization
             init();
         });
         
-        // File upload handler
         document.getElementById('logoUpload').addEventListener('change', function(event) {
             const file = event.target.files[0];
             if (file) {
