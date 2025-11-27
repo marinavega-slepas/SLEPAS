@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Informes - Educación Parvularia</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- html2pdf.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600&family=Nunito:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f0f9ff;
+        }
+
+        h1, h2, h3, .font-heading {
+            font-family: 'Fredoka', sans-serif;
+        }
+
+        /* Tarjetas de selección */
+        .level-card {
+            transition: all 0.2s ease-in-out;
+            border: 2px solid transparent;
+        }
+
+        .level-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            z-index: 20;
+        }
+
+        .level-card.selected {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+
+        /* Colores específicos para niveles (Pasteles) */
+        .btn-comenzando.selected { background-color: #fff7ed; border-color: #f97316; color: #c2410c; }
+        .btn-desarrollando.selected { background-color: #fefce8; border-color: #eab308; color: #a16207; }
+        .btn-consolidando.selected { background-color: #f0fdf4; border-color: #22c55e; color: #15803d; }
+        .btn-profundizando.selected { background-color: #eff6ff; border-color: #3b82f6; color: #1d4ed8; }
+
+        .hidden { display: none; }
+        
+        /* Estilos PDF */
+        #pdf-source {
+            width: 100%;
+            max-width: 800px; 
+            margin: 0 auto;
+            background: white;
+            color: #1f2937;
+        }
+        
+        .pdf-data-table td {
+            padding-bottom: 8px;
+            vertical-align: top;
+        }
+        .pdf-label {
+            font-weight: bold;
+            color: #475569;
+            width: 140px;
+        }
+
+        .logo-container:hover .logo-overlay {
+            opacity: 1;
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        
+        /* Tooltip */
+        .custom-tooltip {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.2s, visibility 0.2s;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            width: 200px;
+            background-color: #1e293b;
+            color: white;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 11px;
+            line-height: 1.4;
+            z-index: 50;
+            pointer-events: none;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .custom-tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1e293b transparent transparent transparent;
+        }
+
+        .level-card:hover .custom-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Estilos de botones de navegación dinámicos */
+        .nav-btn-pending { border-left: 3px solid transparent; color: #64748b; }
+        .nav-btn-progress { background-color: #fffbeb; border-left: 3px solid #fbbf24; color: #b45309; } /* Pastel Yellow/Amber */
+        .nav-btn-complete { background-color: #f0fdf4; border-left: 3px solid #4ade80; color: #15803d; } /* Pastel Green */
+
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body, html { height: auto !important; overflow: visible !important; }
+        }
+    </style>
+</head>
+<body class="text-slate-700 bg-slate-50 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm z-30 relative no-print">
+        <div class="w-full px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-500 text-white p-2 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-800">Generador de Informes</h1>
+                    <p class="text-xs text-slate-500">Educación Parvularia</p>
+                    <p class="text-xs text-slate-500">Elaborado por Ricardo Acevedo Carrasco</p>
+                </div>
+            </div>
+            <div class="flex gap-4 items-center">
+                <button onclick="exportToPDF()" id="btn-export" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Exportar PDF
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Layout Container -->
+    <div class="flex items-start w-full no-print">
+        
+        <!-- Sidebar Navigation (Izquierda) -->
+        <aside class="w-64 bg-white border-r border-slate-200 h-screen sticky top-0 hidden md:flex flex-col flex-shrink-0 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+            <div class="flex-1 overflow-y-auto p-4">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 sticky top-0 bg-white py-2 z-10">Navegación</h3>
+                <div id="nav-container" class="space-y-1">
+                    <!-- Navigation will be populated by JS -->
+                </div>
+            </div>
+            
+            <!-- Barra de Progreso (Sticky Bottom dentro del sidebar) -->
+            <div class="p-4 border-t border-slate-200 bg-slate-50">
+                <div class="flex justify-between items-end mb-2">
+                    <span class="text-xs font-bold text-slate-600">Progreso Total</span>
+                    <span class="text-xs font-bold text-blue-600" id="progress-percent">0%</span>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                    <div id="progress-bar" class="bg-blue-500 h-2.5 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+                </div>
+                <div class="mt-2 flex justify-between text-[10px] text-slate-400">
+                    <span id="progress-count">0/0 Indicadores</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Evaluation Area (Centro) -->
+        <main class="flex-1 p-6 min-w-0">
+            <div class="w-full max-w-5xl mx-auto">
+                
+                <!-- Datos Generales Form -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 mb-8">
+                    <h2 class="text-lg font-bold text-slate-800 mb-4 font-heading border-b border-slate-100 pb-2">Datos Generales del Informe</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre del Estudiante</label>
+                            <input type="text" id="studentName" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: Juan Pérez">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Curso / Nivel</label>
+                            <input type="text" id="studentGrade" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: Kínder A">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre de la Educadora</label>
+                            <input type="text" id="educatorName" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: María González">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre de la Directora</label>
+                            <input type="text" id="directorName" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: Ana López">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Fecha de Entrega</label>
+                            <input type="date" id="deliveryDate" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Periodo de Evaluación</label>
+                            <input type="text" id="evalPeriod" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: Primer Semestre 2024">
+                        </div>
+                    </div>
+                    
+                    <!-- Logo Uploader -->
+                    <div class="mt-4 pt-4 border-t border-slate-100">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Logo Institucional (Si no aparece en el PDF, súbelo aquí)</label>
+                        <div class="flex items-center gap-4">
+                            <img id="preview-logo-settings" src="https://lh3.googleusercontent.com/d/1c3a_aHRJnVTS-khMSGWXe9es38EGHeuf" class="h-12 w-auto object-contain border border-slate-200 rounded p-1">
+                            <input type="file" id="logoUpload" accept="image/*" class="hidden">
+                            <button onclick="document.getElementById('logoUpload').click()" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-4 rounded transition-colors">
+                                Cambiar / Subir Logo
+                            </button>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-2">Recomendación: Si el logo de Drive no carga en el PDF final, sube el archivo de imagen directamente usando este botón.</p>
+                    </div>
+                </div>
+
+                <div id="matrix-container" class="space-y-8 pb-20">
+                    <!-- Matrix Content will be populated by JS -->
+                    <div class="text-center py-20 text-slate-400">
+                        <p>Cargando datos...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Live Report Sidebar (Derecha) -->
+        <aside class="w-80 bg-white border-l border-slate-200 h-screen sticky top-0 overflow-y-auto hidden lg:flex flex-col flex-shrink-0 z-20 shadow-[-4px_0_24px_rgba(0,0,0,0.02)]">
+            <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 sticky top-0 z-10">
+                <h2 class="font-heading font-bold text-lg text-slate-800">Vista Previa</h2>
+                <button onclick="copyToClipboard()" class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m2 4v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Copiar
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6" id="report-content">
+                <div class="text-slate-400 text-center text-sm italic mt-10">
+                    Selecciona niveles de progreso para ver la narración aquí.
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-200 bg-slate-50 text-xs text-slate-500 text-center sticky bottom-0 z-10">
+                Los textos se actualizan automáticamente.
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- Hidden PDF Source Template -->
+    <div id="pdf-container" class="hidden">
+        <div id="pdf-source" class="p-10 bg-white" style="position: relative;">
+            
+            <!-- HEADER CON IMAGEN -->
+            <div class="mb-6 flex justify-center border-b border-slate-200 pb-4 logo-container relative cursor-pointer" title="Click para cambiar logo" onclick="document.getElementById('logoUpload').click()">
+                <img id="pdf-logo" 
+                     src="https://lh3.googleusercontent.com/d/1c3a_aHRJnVTS-khMSGWXe9es38EGHeuf" 
+                     alt="Logo Institucional" 
+                     style="max-height: 100px; max-width: 100%; object-fit: contain;" 
+                     crossorigin="anonymous">
+            </div>
+
+            <!-- TITLE -->
+            <div class="mb-8 text-center">
+                <h1 class="text-2xl font-bold text-slate-900 font-heading uppercase tracking-wide">INFORME PEDAGÓGICO NIVEL DE TRANSICIÓN</h1>
+            </div>
+
+            <!-- STUDENT & REPORT DATA GRID -->
+            <div class="mb-8 bg-slate-50 p-6 rounded-lg border border-slate-100">
+                <table class="w-full text-sm pdf-data-table">
+                    <tr>
+                        <td class="pdf-label">Estudiante:</td>
+                        <td class="font-medium text-slate-900" id="pdf-student-name">________</td>
+                        <td class="pdf-label pl-4">Curso:</td>
+                        <td class="font-medium text-slate-900" id="pdf-student-grade">________</td>
+                    </tr>
+                    <tr>
+                        <td class="pdf-label">Educadora:</td>
+                        <td class="font-medium text-slate-900" id="pdf-educator-name-header">________</td>
+                        <td class="pdf-label pl-4">Fecha:</td>
+                        <td class="font-medium text-slate-900" id="pdf-delivery-date">________</td>
+                    </tr>
+                    <tr>
+                        <td class="pdf-label">Periodo:</td>
+                        <td class="font-medium text-slate-900" colspan="3" id="pdf-eval-period">________</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <!-- CONTENT -->
+            <div id="print-content" class="text-sm leading-relaxed text-slate-800" style="min-height: 200px;">
+                <!-- Content injected by JS -->
+            </div>
+
+            <!-- LEYENDA NIVELES -->
+            <div class="mt-10 pt-4 border-t border-slate-200 text-xs text-slate-500 text-justify" style="page-break-inside: avoid;">
+                <p class="mb-1">El presente informe muestra los niveles de progreso del niño o la niña en los Objetivos de Aprendizaje evaluados en el periodo.</p>
+                <p><span class="font-bold text-slate-700">Niveles de progreso:</span> Profundizando, Consolidando, Desarrollando y Comenzando.</p>
+            </div>
+            
+            <!-- SIGNATURES SECTION -->
+            <div style="margin-top: 60px; padding-top: 20px; page-break-inside: avoid;">
+                <div style="display: flex; justify-content: space-between; gap: 40px;">
+                    <!-- Firma Educadora -->
+                    <div style="text-align: center; flex: 1;">
+                        <div style="height: 60px; border-bottom: 1px solid #94a3b8; margin-bottom: 8px; display: flex; align-items: flex-end; justify-content: center;">
+                            <!-- Espacio para firma manuscrita -->
+                        </div>
+                        <p id="pdf-sign-educator-name" style="font-size: 10px; color: #475569; margin-bottom: 2px;">________</p>
+                        <p style="font-size: 12px; font-weight: bold; color: #334155;">Educadora</p>
+                    </div>
+                    
+                    <!-- Firma Directora -->
+                    <div style="text-align: center; flex: 1;">
+                        <div style="height: 60px; border-bottom: 1px solid #94a3b8; margin-bottom: 8px; display: flex; align-items: flex-end; justify-content: center;">
+                            <!-- Espacio para firma manuscrita -->
+                        </div>
+                        <p id="pdf-sign-director-name" style="font-size: 10px; color: #475569; margin-bottom: 2px;">________</p>
+                        <p style="font-size: 12px; font-weight: bold; color: #334155;">Directora</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- DATA SOURCE ---
+            const csvDataRaw = `
+"Ámbito","Núcleo","Objetivo de Aprendizaje (OA)","Nivel de Progreso","Descripción"
+"DESARROLLO PERSONAL Y SOCIAL","Identidad y autonomía","1. Comunicación de emociones (OA 1)","Profundizando","A partir de narraciones y situaciones observadas en forma directa, el niño o la niña nombra sus emociones básicas y las sensaciones o reacciones físicas que le provocan en su cuerpo; verbaliza sensaciones o reacciones físicas asociadas a emociones complejas (sin nombrar la emoción); y verbaliza la fuente que provoca sus emociones."
+"DESARROLLO PERSONAL Y SOCIAL","Identidad y autonomía","1. Comunicación de emociones (OA 1)","Consolidando","A partir de narraciones y situaciones observadas en forma directa, el niño o la niña, nombra sus emociones básicas y las sensaciones o reacciones físicas que le provocan en su cuerpo; y verbaliza la fuente que provoca sus emociones."
+"DESARROLLO PERSONAL Y SOCIAL","Identidad y autonomía","1. Comunicación de emociones (OA 1)","Desarrollando","A partir de narraciones y situaciones observadas en forma directa, el niño o la niña: verbaliza sus sensaciones o reacciones físicas asociadas a emociones básicas, sin nombrar la emoción."
+"DESARROLLO PERSONAL Y SOCIAL","Identidad y autonomía","1. Comunicación de emociones (OA 1)","Comenzando","A partir de narraciones y situaciones observadas en forma directa, el niño o la niña: Indica gestual o corporalmente, o solo por medio de recursos de apoyo adicionales, sus sensaciones o reacciones físicas asociadas a emociones básicas."
+"DESARROLLO PERSONAL Y SOCIAL","Identidad y autonomía","2. Autorregulación emocional (OA 4)","Profundizando","Cuando el niño o la niña se enfrenta a situaciones displacenteras y/o dificultades cotidianas, a partir de la corregulación que hace la persona adulta, la mayoría de las veces posterga su necesidad de gratificación inmediata, comunica sus emociones y opiniones sobre lo sucedido y utiliza de manera autónoma o propone actividades para mantener un comportamiento regulado."
+"DESARROLLO PERSONAL Y SOCIAL","Identidad y autonomía","2. Autorregulación emocional (OA 4)","Consolidando","Cuando el niño o la niña se enfrenta a situaciones displacenteras y/o dificultades cotidianas, a partir de la corregulación que hace la persona adulta, la mayoría de las veces posterga su necesidad de gratificación inmediata, comunica sus emociones y realiza actividades sugeridas por el (la) adulto(a) para reenfocar su atención y regular su comportamiento."
+"DESARROLLO PERSONAL Y SOCIAL","Identidad y autonomía","2. Autorregulación emocional (OA 4)","Desarrollando","Cuando el niño o la niña se enfrenta a situaciones displacenteras y/o dificultades cotidianas, a partir de la corregulación que hace la persona adulta, algunas veces posterga su necesidad de gratificación inmediata, comunica sus emociones y realiza actividades sugeridas por el (la) adulto(a) para reenfocar su atención y regular su comportamiento."
+"DESARROLLO PERSONAL Y SOCIAL","Identidad y autonomía","2. Autorregulación emocional (OA 4)","Comenzando","Cuando el niño o la niña se enfrenta a situaciones displacenteras y/o dificultades cotidianas, a partir de la corregulación que hace la persona adulta, presenta dificultades para aceptar esta contención y comunicar sus emociones, y rara vez retrasa la gratificación inmediata, expresando su malestar de manera desregulada (golpes, gritos, etc.)."
+"DESARROLLO PERSONAL Y SOCIAL","Identidad y autonomía","3. Preferencias, opiniones e ideas (OA 5)","Profundizando","Durante experiencias cotidianas y juegos, el niño o la niña explica sus preferencias y opiniones sobre los materiales, juegos, actividades, personas, lugares o situaciones, y propone ideas (materiales, actividades, proyectos u otros) para desarrollar en diversas situaciones cotidianas o juegos."
+"DESARROLLO PERSONAL Y SOCIAL","Identidad y autonomía","3. Preferencias, opiniones e ideas (OA 5)","Consolidando","Durante experiencias cotidianas y juegos, el niño o la niña explica sus preferencias y opiniones sobre los materiales, juegos, actividades, lugares, personas o situaciones."
+"DESARROLLO PERSONAL Y SOCIAL","Identidad y autonomía","3. Preferencias, opiniones e ideas (OA 5)","Desarrollando","Durante experiencias cotidianas y juegos, el niño o la niña representa, por medio de algún lenguaje (pictórico, corporal, gestual, verbal u otro), sus preferencias sobre los materiales, juegos, actividades, lugares, personas o situaciones."
+"DESARROLLO PERSONAL Y SOCIAL","Identidad y autonomía","3. Preferencias, opiniones e ideas (OA 5)","Comenzando","Durante experiencias cotidianas y juegos, el niño o la niña utiliza materiales y realiza juegos o actividades de su preferencia."
+"DESARROLLO PERSONAL Y SOCIAL","Identidad y autonomía","4. Juegos sociodramáticos (OA 13)","Profundizando","El niño o la niña expresa sus pensamientos y experiencias personales, familiares y/o comunitarias, jugando con sus pares a representar una historia con acontecimientos secuenciados, en torno a una idea elaborada en conjunto con ellos."
+"DESARROLLO PERSONAL Y SOCIAL","Identidad y autonomía","4. Juegos sociodramáticos (OA 13)","Consolidando","El niño o la niña expresa sus pensamientos y experiencias personales, familiares y/o comunitarias, jugando con sus pares a representar un rol y acontecimientos aislados (no secuenciados)."
+"DESARROLLO PERSONAL Y SOCIAL","Identidad y autonomía","4. Juegos sociodramáticos (OA 13)","Desarrollando","El niño o la niña expresa sus pensamientos y experiencias personales, familiares y/o comunitarias, jugando a representar un rol y acontecimientos aislados, de manera individual o en paralelo a sus pares."
+"DESARROLLO PERSONAL Y SOCIAL","Identidad y autonomía","4. Juegos sociodramáticos (OA 13)","Comenzando","El niño o la niña expresa sus pensamientos y experiencias personales, familiares y/o comunitarias, simulando que un objeto representa otra cosa o que cumple un propósito diferente, de manera individual o en paralelo a sus pares."
+"DESARROLLO PERSONAL Y SOCIAL","Convivencia y ciudadanía","5. Participación colaborativa (OA 1)","Profundizando","En instancias grupales, el niño o la niña planifica juegos y actividades, escuchando y comunicando ideas y colaborando con sus pares, en acciones que sean coherentes con la experiencia o juego realizado, cumpliendo la mayoría de las veces con las responsabilidades y roles asumidos."
+"DESARROLLO PERSONAL Y SOCIAL","Convivencia y ciudadanía","5. Participación colaborativa (OA 1)","Consolidando","En instancias grupales, el niño o la niña escucha, comunica ideas y colabora con sus pares en acciones que sean coherentes con la experiencia o juego realizado, cumpliendo la mayoría de las veces con las responsabilidades y roles asumidos."
+"DESARROLLO PERSONAL Y SOCIAL","Convivencia y ciudadanía","5. Participación colaborativa (OA 1)","Desarrollando","En instancias grupales, el niño o la niña escucha, comunica ideas y colabora con sus pares en acciones que son coherentes con la experiencia o juego realizado, cumpliendo algunas veces con las responsabilidades y roles asumidos."
+"DESARROLLO PERSONAL Y SOCIAL","Convivencia y ciudadanía","5. Participación colaborativa (OA 1)","Comenzando","En instancias grupales, el niño o la niña juega con pares cercanos, estableciendo intercambios sencillos."
+"DESARROLLO PERSONAL Y SOCIAL","Convivencia y ciudadanía","6. Resolución de conflictos (OA 5)","Profundizando","Cuando el niño o la niña se enfrenta a una situación de conflicto, expresa y escucha las necesidades, ideas, deseos propios y del resto, y la mayoría de las veces realiza acciones pacíficas, de manera autónoma, que contribuyen a una resolución del conflicto."
+"DESARROLLO PERSONAL Y SOCIAL","Convivencia y ciudadanía","6. Resolución de conflictos (OA 5)","Consolidando","Cuando el niño o la niña se enfrenta a una situación de conflicto, expresa y escucha las necesidades, ideas, deseos propios y del resto, y algunas veces realiza acciones pacíficas de manera autónoma, que contribuyen a una resolución del conflicto."
+"DESARROLLO PERSONAL Y SOCIAL","Convivencia y ciudadanía","6. Resolución de conflictos (OA 5)","Desarrollando","Cuando el niño o la niña se enfrenta a una situación de conflicto, expresa sus necesidades, ideas y deseos, y algunas veces acepta y realiza las acciones pacíficas propuestas por un(a) adulto(a), que contribuyen a una resolución del conflicto."
+"DESARROLLO PERSONAL Y SOCIAL","Convivencia y ciudadanía","6. Resolución de conflictos (OA 5)","Comenzando","Cuando el niño o la niña se enfrente a una situación de conflicto, expresa sus necesidades, ideas y deseos, y rara vez acepta y realiza las acciones pacíficas propuestas por un(a) adulto(a), que contribuyen a una resolución del conflicto."
+"DESARROLLO PERSONAL Y SOCIAL","Convivencia y ciudadanía","7. Prácticas democráticas (OA 10)","Profundizando","A partir de experiencias cotidianas y lúdicas, el niño o la niña comunica, por medio de algún lenguaje (pictórico, verbal, dramático u otro), algunas características culturales que identifica en las formas de vida de familias de sus pares y de su comunidad local, como también de personas de otros territorios, y opina sobre los aportes de conocer y compartir diversas culturas y formas de vida."
+"DESARROLLO PERSONAL Y SOCIAL","Convivencia y ciudadanía","7. Prácticas democráticas (OA 10)","Consolidando","A partir de experiencias cotidianas y lúdicas, el niño o la niña comunica, por medio de algún lenguaje (pictórico, verbal, dramático u otro), algunas características culturales que identifica en las formas de vida de familias de sus pares y de su comunidad local, como también de personas de otros territorios."
+"DESARROLLO PERSONAL Y SOCIAL","Convivencia y ciudadanía","7. Prácticas democráticas (OA 10)","Desarrollando","A partir de experiencias cotidianas y lúdicas, el niño o la niña comunica, por medio de algún lenguaje (pictórico, verbal, dramático u otro), algunas características culturales que identifica en las formas de vida de algunas familias de sus pares o de su comunidad local."
+"DESARROLLO PERSONAL Y SOCIAL","Convivencia y ciudadanía","7. Prácticas democráticas (OA 10)","Comenzando","A partir de experiencias cotidianas y lúdicas, el niño o la niña comunica, por medio de algún lenguaje (pictórico, verbal, dramático u otro), algunas características culturales que identifica en las formas de vida de sus pares."
+"DESARROLLO PERSONAL Y SOCIAL","Convivencia y ciudadanía","8. Aprecio por la diversidad (OA 11)","Profundizando","A partir de experiencias cotidianas y lúdicas, el niño o la niña comunica, por medio de algún lenguaje (pictórico, verbal, dramático u otro), algunas características culturales que identifica en las formas de vida de familias de sus pares y de su comunidad local, como también de personas de otros territorios; y opina sobre los aportes de conocer y compartir diversas culturas y formas de vida."
+"DESARROLLO PERSONAL Y SOCIAL","Convivencia y ciudadanía","8. Aprecio por la diversidad (OA 11)","Consolidando","A partir de experiencias cotidianas y lúdicas, el niño o la niña comunica, por medio de algún lenguaje (pictórico, verbal, dramático u otro), algunas características culturales que identifica en las formas de vida de familias de sus pares y de su comunidad local, como también de personas de otros territorios."
+"DESARROLLO PERSONAL Y SOCIAL","Convivencia y ciudadanía","8. Aprecio por la diversidad (OA 11)","Desarrollando","A partir de experiencias cotidianas y lúdicas, el niño o la niña comunica, por medio de algún lenguaje (pictórico, verbal, dramático u otro), algunas características culturales que identifica en las formas de vida de algunas familias de sus pares o de su comunidad local."
+"DESARROLLO PERSONAL Y SOCIAL","Convivencia y ciudadanía","8. Aprecio por la diversidad (OA 11)","Comenzando","A partir de experiencias cotidianas y lúdicas, el niño o la niña comunica, por medio de algún lenguaje (pictórico, verbal, dramático u otro), algunas características culturales que identifica en las formas de vida de sus pares."
+"DESARROLLO PERSONAL Y SOCIAL","Corporalidad y movimiento","9. Autocuidado corporal (OA 1)","Profundizando","En situaciones cotidianas, la mayoría de las veces el niño o la niña realiza acciones de autocuidado de su cuerpo, a partir de su propia iniciativa y de manera autónoma, y comunica por medio de algún lenguaje (verbal, pictórico, corporal u otros) los beneficios de practicar acciones de autocuidado de su cuerpo."
+"DESARROLLO PERSONAL Y SOCIAL","Corporalidad y movimiento","9. Autocuidado corporal (OA 1)","Consolidando","En situaciones cotidianas, la mayoría de las veces el niño o la niña realiza acciones de autocuidado de su cuerpo, a partir de su propia iniciativa y de manera autónoma."
+"DESARROLLO PERSONAL Y SOCIAL","Corporalidad y movimiento","9. Autocuidado corporal (OA 1)","Desarrollando","En situaciones cotidianas, algunas veces el niño o la niña realiza acciones de autocuidado de su cuerpo, a partir de su propia iniciativa y de manera autónoma."
+"DESARROLLO PERSONAL Y SOCIAL","Corporalidad y movimiento","9. Autocuidado corporal (OA 1)","Comenzando","En situaciones cotidianas, rara vez el niño o la niña realiza acciones de autocuidado de su cuerpo, a partir de su propia iniciativa y de manera autónoma, requiriendo apoyo constante de la persona adulta."
+"DESARROLLO PERSONAL Y SOCIAL","Corporalidad y movimiento","10. Apreciación corporal (OA 2)","Profundizando","En situaciones cotidianas, el niño o la niña describe características corporales de sí mismo(a), destacando aquellas que más le agradan, y describe semejanzas o diferencias entre sus características corporales y las de sus pares."
+"DESARROLLO PERSONAL Y SOCIAL","Corporalidad y movimiento","10. Apreciación corporal (OA 2)","Consolidando","En situaciones cotidianas, el niño o la niña describe características corporales de sí mismo(a), destacando aquellas que más le agradan."
+"DESARROLLO PERSONAL Y SOCIAL","Corporalidad y movimiento","10. Apreciación corporal (OA 2)","Desarrollando","En situaciones cotidianas, el niño o la niña describe características corporales de sí mismo(a)."
+"DESARROLLO PERSONAL Y SOCIAL","Corporalidad y movimiento","10. Apreciación corporal (OA 2)","Comenzando","En situaciones cotidianas, el niño o la niña observa con atención su cuerpo o imagen corporal, y nombra partes de su cuerpo que llaman su atención."
+"DESARROLLO PERSONAL Y SOCIAL","Corporalidad y movimiento","11. Movimiento y bienestar (OA 5)","Profundizando","En situaciones cotidianas de recreación, actividad física y movimiento, el niño o la niña observa, participa y se involucra activamente, y demuestra disfrute (sonríe o muestra alegría por otros gestos) por lo que está haciendo, y comunica, por medio de algún lenguaje (verbal, gestual, corporal, pictórico u otro), los movimientos que prefiere realizar, fundamentando sus preferencias, y las sensaciones físicas que le producen."
+"DESARROLLO PERSONAL Y SOCIAL","Corporalidad y movimiento","11. Movimiento y bienestar (OA 5)","Consolidando","En situaciones cotidianas de recreación, actividad física y movimiento, el niño o la niña observa, participa y se involucra activamente, y demuestra disfrute (sonríe o muestra alegría por otros gestos) por lo que está haciendo, y comunica, por medio de algún lenguaje (verbal, gestual, corporal, pictórico u otro), los movimientos que prefiere realizar o las sensaciones físicas que le producen."
+"DESARROLLO PERSONAL Y SOCIAL","Corporalidad y movimiento","11. Movimiento y bienestar (OA 5)","Desarrollando","En situaciones cotidianas de recreación, actividad física y movimiento, el niño o la niña observa, participa y se involucra activamente, y demuestra disfrute (sonríe o muestra alegría por otros gestos) por lo que está haciendo y señala o muestra a otra persona los movimientos que le gusta hacer."
+"DESARROLLO PERSONAL Y SOCIAL","Corporalidad y movimiento","11. Movimiento y bienestar (OA 5)","Comenzando","En situaciones cotidianas de recreación, actividad física y movimiento, el niño o la niña observa, participa y se involucra activamente, y demuestra disfrute (sonríe o muestra alegría por otros gestos) por lo que está haciendo."
+"DESARROLLO PERSONAL Y SOCIAL","Corporalidad y movimiento","12. Desafíos prácticos (OA 7)","Profundizando","En situaciones donde enfrenta un desafío práctico cotidiano propuesto por sí mismo(a) o por medio de un ambiente desafiante, el niño o la niña, al desplazarse, mantiene el equilibrio y la coordinación al combinar cambios de velocidad, de postura o de dirección, además, realiza desplazamientos y movimientos en superficies de distintas alturas o con obstáculos manteniendo el equilibrio y la coordinación, y permaneciendo en su lugar y mientras se desplaza, lanza o recibe objetos hacia la misma dirección de su mirada, con coordinación y manteniendo el equilibrio."
+"DESARROLLO PERSONAL Y SOCIAL","Corporalidad y movimiento","12. Desafíos prácticos (OA 7)","Consolidando","En situaciones donde enfrenta un desafío práctico cotidiano propuesto por sí mismo(a) o por medio de un ambiente desafiante, el niño o la niña, al desplazarse, mantiene el equilibrio y la coordinación al combinar cambios de velocidad, de postura o de dirección, además, realiza desplazamientos y movimientos en superficies de distintas alturas o con obstáculos manteniendo el equilibrio y la coordinación, y permaneciendo en su lugar, lanza o recibe objetos hacia la misma dirección de su mirada, con coordinación y manteniendo el equilibrio."
+"DESARROLLO PERSONAL Y SOCIAL","Corporalidad y movimiento","12. Desafíos prácticos (OA 7)","Desarrollando","En situaciones donde enfrenta un desafío práctico cotidiano propuesto por sí mismo(a) o por medio de un ambiente desafiante, el niño o la niña, al desplazarse, mantiene el equilibrio y la coordinación al combinar cambios de velocidad, de postura o de dirección; además, realiza desplazamientos y movimientos en superficies de distintas alturas o con obstáculos manteniendo el equilibrio y la coordinación o permaneciendo en su lugar, lanza o recibe objetos hacia la misma dirección de su mirada, con coordinación y manteniendo el equilibrio."
+"DESARROLLO PERSONAL Y SOCIAL","Corporalidad y movimiento","12. Desafíos prácticos (OA 7)","Comenzando","En situaciones donde enfrenta un desafío práctico cotidiano propuesto por sí mismo(a) o por medio de un ambiente desafiante, el niño o la niña, al desplazarse, mantiene el equilibrio y la coordinación al combinar cambios de velocidad, de postura o de dirección."
+"COMUNICACIÓN INTEGRAL","Lenguaje verbal","13. Conciencia fonológica (OA 3)","Profundizando","Durante situaciones cotidianas y experiencias lúdicas mediadas por el (la) adulto(a), el niño o la niña: agrega, quita o junta sílabas para formar nuevas palabras sencillas; agrega, quita o junta fonemas para formar una palabra sencilla; forma una palabra sencilla a partir de fonemas dados; agrega o elimina una palabra de una frase u oración simple o compleja, y verbaliza la frase u oración resultante."
+"COMUNICACIÓN INTEGRAL","Lenguaje verbal","13. Conciencia fonológica (OA 3)","Consolidando","Durante situaciones cotidianas y experiencias lúdicas mediadas por el (la) adulto(a), el niño o la niña: verbaliza o indica, con ayuda de material concreto, palabras sencillas que inician y terminan con la misma sílaba, verbaliza todos los fonemas que conforman una palabra sencilla, y percute con su cuerpo, o bien verbaliza, indica con ayuda de material concreto o cuenta las palabras que componen una frase u oración compleja."
+"COMUNICACIÓN INTEGRAL","Lenguaje verbal","13. Conciencia fonológica (OA 3)","Desarrollando","Durante situaciones cotidianas y experiencias lúdicas mediadas por el (la) adulto(a), el niño o la niña: verbaliza o indica, con ayuda de material concreto, palabras sencillas que terminan con la misma sílaba (rimas) verbaliza el fonema inicial y final de una palabra sencilla, y percute con su cuerpo, o bien verbaliza, indica con ayuda de material concreto o cuenta las palabras que componen una frase u oración simple."
+"COMUNICACIÓN INTEGRAL","Lenguaje verbal","13. Conciencia fonológica (OA 3)","Comenzando","Durante situaciones cotidianas y experiencias lúdicas mediadas por el (la) adulto(a), el niño o la niña verbaliza, o bien percute con su cuerpo o cuenta las sílabas de palabras sencillas."
+"COMUNICACIÓN INTEGRAL","Lenguaje verbal","14. Vocabulario (OA 4)","Profundizando","En diversas situaciones comunicativas y con diferentes interlocutores, el niño o la niña comunica temas de su interés, experiencias vividas u opiniones, utilizando palabras nuevas, referidas a elementos concretos y a conceptos abstractos, pertinentes al tema o situación comunicativa."
+"COMUNICACIÓN INTEGRAL","Lenguaje verbal","14. Vocabulario (OA 4)","Consolidando","En diversas situaciones y con diferentes interlocutores, el niño o la niña comunica temas de su interés, experiencias u opiniones, utilizando palabras nuevas, referidas a elementos concretos que son pertinentes al tema o a la situación comunicativa."
+"COMUNICACIÓN INTEGRAL","Lenguaje verbal","14. Vocabulario (OA 4)","Desarrollando","En diversas situaciones y con diferentes interlocutores, el niño o la niña comunica temas de su interés, experiencias u opiniones utilizando palabras nuevas, referidas a elementos concretos. Sin embargo, algunas palabras que utiliza son poco pertinentes al tema o situación comunicativa."
+"COMUNICACIÓN INTEGRAL","Lenguaje verbal","14. Vocabulario (OA 4)","Comenzando","En diversas situaciones y con diferentes interlocutores, el niño o la niña comunica temas de su interés, experiencias u opiniones utilizando palabras conocidas."
+"COMUNICACIÓN INTEGRAL","Lenguaje verbal","15. Comprensión oral (OA 6)","Profundizando","A partir de la escucha atenta de textos literarios y no literarios simples, y frente a preguntas o indicaciones de la persona adulta, el niño o la niña comunica verbalmente información explícita relevante del texto, inferencias locales relevantes e ideas centrales que dan cuenta del tema expuesto o la historia narrada en el texto."
+"COMUNICACIÓN INTEGRAL","Lenguaje verbal","15. Comprensión oral (OA 6)","Consolidando","A partir de la escucha atenta de textos literarios y no literarios simples, y frente a preguntas o indicaciones de la persona adulta, el niño o la niña comunica verbalmente información explícita relevante del texto e inferencias locales relevantes."
+"COMUNICACIÓN INTEGRAL","Lenguaje verbal","15. Comprensión oral (OA 6)","Desarrollando","A partir de la escucha atenta de textos literarios y no literarios simples, y frente a preguntas o indicaciones de la persona adulta, el niño o la niña comunica verbalmente información explícita que se repite en el texto o inferencias locales aisladas y poco relevantes relacionadas con información del texto."
+"COMUNICACIÓN INTEGRAL","Lenguaje verbal","15. Comprensión oral (OA 6)","Comenzando","A partir de la observación y escucha atenta de textos literarios simples y no literarios, y frente a preguntas o indicaciones de la persona adulta, el niño o la niña comunica información explícita que se repite en el texto."
+"COMUNICACIÓN INTEGRAL","Lenguaje verbal","16. Reconocimiento de palabras (OA 7)","Profundizando","En diversas situaciones auténticas y/o pedagógicas: reconoce o verbaliza palabras menos frecuentes (para los contextos de cada niño/a) de al menos 3 silabas. La mayoría de las veces, independiente del número de sus silabas, el reconocimiento de palabras es fluido o rápido, es decir, no se detiene entre las letras al pronunciar la palabra, y no omite ninguna letra. Indica o verbaliza al menos 11 nombres de las letras en forma ligada o imprenta, mayúsculas y minúsculas y/o sus sonidos correspondientes."
+"COMUNICACIÓN INTEGRAL","Lenguaje verbal","16. Reconocimiento de palabras (OA 7)","Consolidando","En diversas situaciones auténticas y/o pedagógicas: reconoce o verbaliza palabras menos frecuentes (para los contextos de cada niño/a) de al menos 3 silabas. Algunas veces. Independiente del número de sus silabas, este reconocimiento es titubeante o más lento, es decir, se detiene entre las letras al pronunciar la palabra, pero no omite ninguna letra. Indica o verbaliza entre 10 y 8 nombres de las letras en forma ligada o imprenta, mayúsculas y minúsculas y/o sus sonidos correspondientes."
+"COMUNICACIÓN INTEGRAL","Lenguaje verbal","16. Reconocimiento de palabras (OA 7)","Desarrollando","En diversas situaciones auténticas y/o pedagógicas reconoce o verbaliza palabras menos frecuentes (para los contextos de cada niño/a) de 2 silabas o menos. Algunas veces, independiente del número de sus silabas, este reconocimiento es titubeante o más lento, es decir, se detiene entre las letras al pronunciar la palabra. Podría presentar errores en algunas partes de las palabras, independientemente de su cantidad de sílabas (omisión de algún sonido de alguna silaba, cambio de un sonido por otro, etc.). Esto incluye los contextos en que niños o niñas primero leen con un error e inmediatamente se corrigen solos. Indica o verbaliza entre 10 y 8 nombres de las letras en forma ligada o imprenta, mayúsculas o minúsculas y/o sus sonidos correspondientes."
+"COMUNICACIÓN INTEGRAL","Lenguaje verbal","16. Reconocimiento de palabras (OA 7)","Comenzando","En diversas situaciones auténticas y/o pedagógicas: Reconoce logos (marcas, palabras que identifica visualmente) o palabras frecuentes o familiares (su nombre, el nombre de los días de la semana, etc.). El reconocimiento de estos logos o palabras frecuentes o familiares es fluido o rápido, es decir, no se detiene entre las letras al pronunciar la palabra. Indica o verbaliza 7 o menos nombres de letras en forma ligada o imprenta, mayúsculas o minúsculas, y/o sus sonidos correspondientes (principalmente las vocales o algunas consonantes de palabras frecuentes)."
+"COMUNICACIÓN INTEGRAL","Lenguajes artísticos","17. Apreciación artística (OA 1)","Profundizando","En experiencias mediadas de observación directa o indirecta de producciones artísticas, el niño o la niña describe características visuales o musicales o escénicas de una obra y comenta semejanzas o diferencias entre distintas producciones artísticas a partir de sus características. Además, formula preguntas referentes a las obras o sus artistas o sus procesos de creación."
+"COMUNICACIÓN INTEGRAL","Lenguajes artísticos","17. Apreciación artística (OA 1)","Consolidando","En experiencias mediadas de observación directa o indirecta de producciones artísticas, el niño o la niña describe características visuales o musicales o escénicas de una obra y comenta semejanzas o diferencias entre distintas producciones artísticas a partir de sus características."
+"COMUNICACIÓN INTEGRAL","Lenguajes artísticos","17. Apreciación artística (OA 1)","Desarrollando","En experiencias mediadas de observación directa o indirecta de producciones artísticas, el niño o la niña describe características visuales o musicales o escénicas de una producción artística."
+"COMUNICACIÓN INTEGRAL","Lenguajes artísticos","17. Apreciación artística (OA 1)","Comenzando","En experiencias mediadas de observación directa o indirecta de producciones artísticas, el niño o la niña nombra características visuales o musicales o escénicas de una producción artística."
+"COMUNICACIÓN INTEGRAL","Lenguajes artísticos","18. Impresiones, emociones e ideas de obras artísticas (OA 2)","Profundizando","En experiencias de experimentación y observación de obras de arte y producciones artísticas visuales, musicales o escénicas propias y de sus pares, la niña o el niño describe las emociones, ideas o impresiones que le producen dichas obras, haciendo referencia a aquello que lo produce; y, además, compara las emociones, ideas o impresiones que le generan distintas producciones artísticas."
+"COMUNICACIÓN INTEGRAL","Lenguajes artísticos","18. Impresiones, emociones e ideas de obras artísticas (OA 2)","Consolidando","En experiencias de experimentación y observación de obras de arte y producciones artísticas visuales, musicales o escénicas propias y de sus pares, la niña o el niño describe las emociones, ideas o impresiones que le producen dichas obras, haciendo referencia a aquello que lo produce."
+"COMUNICACIÓN INTEGRAL","Lenguajes artísticos","18. Impresiones, emociones e ideas de obras artísticas (OA 2)","Desarrollando","En experiencias de experimentación y observación de obras de arte y producciones artísticas visuales, musicales o escénicas propias y de sus pares, la niña o el niño comunica, haciendo uso de algún lenguaje (corporal, pictórico o verbal), las emociones, ideas o impresiones que le producen dichas obras."
+"COMUNICACIÓN INTEGRAL","Lenguajes artísticos","18. Impresiones, emociones e ideas de obras artísticas (OA 2)","Comenzando","En experiencias de experimentación y observación de obras de arte y producciones artísticas visuales, musicales o escénicas propias y de sus pares, la niña o el niño comunica, por medio de algún lenguaje (corporal, pictórico o verbal), el agrado o desagrado que le producen dichas obras."
+"COMUNICACIÓN INTEGRAL","Lenguajes artísticos","19. Expresión artística (OA 6)","Profundizando","En experiencias de expresión artística que incluyen variedad de recursos expresivos, el niño o la niña crea producciones artísticas inspiradas en obras de arte, combinando materiales, procedimientos y técnicas de distintos lenguajes artísticos (plástico, visual, corporal, literario o musical), describe su proceso de creación, detallando los pasos y justificando las decisiones que tomó."
+"COMUNICACIÓN INTEGRAL","Lenguajes artísticos","19. Expresión artística (OA 6)","Consolidando","En experiencias de expresión artística que incluyen variedad de recursos expresivos, el niño o la niña crea producciones artísticas inspiradas en obras de arte, combinando materiales, procedimientos y técnicas de distintos lenguajes artísticos (plástico, visual, corporal, literario o musical), y describe su proceso de creación, detallando los pasos que siguió."
+"COMUNICACIÓN INTEGRAL","Lenguajes artísticos","19. Expresión artística (OA 6)","Desarrollando","En experiencias de expresión artística que incluyen variedad de recursos expresivos, el niño o la niña crea producciones artísticas inspiradas en obras de arte, combinando materiales, procedimientos y técnicas de distintos lenguajes artísticos (plástico, visual, corporal, literario o musical), y nombra algunas acciones que realizó en su proceso de creación."
+"COMUNICACIÓN INTEGRAL","Lenguajes artísticos","19. Expresión artística (OA 6)","Comenzando","En experiencias de expresión artística que incluyen variedad de recursos expresivos, el niño o la niña crea producciones artísticas combinando materiales, procedimientos y técnicas de diversos lenguajes artísticos (plástico, visual, corporal, literario o musical)."
+"COMUNICACIÓN INTEGRAL","Lenguajes artísticos","20. Representación a través del dibujo (OA 7)","Profundizando","En experiencias de expresión visual libre, la niña o el niño realiza dibujos de objetos y personas del entorno, que incluyen trazos circulares y rectos, con la presencia de detalles como una figura humana con tronco, brazos, cabeza, piernas, manos, dedos, boca, nariz, ojos, labios, cabello, pestañas, cejas o expresiones en el rostro de las personas (enojo, alegría, tristeza o sorpresa entre otros), organizando los elementos dibujados espacialmente, de acuerdo a lo que se está representando, y describe lo que dibujó."
+"COMUNICACIÓN INTEGRAL","Lenguajes artísticos","20. Representación a través del dibujo (OA 7)","Consolidando","En experiencias de expresión visual libre, la niña o el niño realiza dibujos de objetos y personas del entorno, que incluyen trazos circulares y rectos, con la presencia de detalles, como una figura humana con tronco, brazos, cabeza, ojos, piernas, organizando los elementos dibujados espacialmente, de acuerdo a lo que se está representando, y describe lo que dibujó."
+"COMUNICACIÓN INTEGRAL","Lenguajes artísticos","20. Representación a través del dibujo (OA 7)","Desarrollando","En experiencias de expresión visual libre, la niña o el niño realiza dibujos de objetos y personas del entorno, que incluyen trazos circulares y rectos, sin la presencia de detalles, como una figura humana con cabeza, brazos y piernas, sin una organización espacial de los elementos dibujados, acorde a lo que se está representando, y describe lo que dibujó."
+"COMUNICACIÓN INTEGRAL","Lenguajes artísticos","20. Representación a través del dibujo (OA 7)","Comenzando","En experiencias de expresión visual libre, la niña o el niño realiza garabatos de personas y objetos del entorno, nombrando lo que dibujó."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Exploración del entorno natural","21. Interés y asombro por el entorno natural (OA 1)","Profundizando","Al observar o conversar respecto de cambios que ocurren en su entorno natural, el niño o la niña explora, manipula o atiende de manera focalizada y sostenida aquello que llama su atención. Además, con la mediación o no de una persona adulta, señala o verbaliza lo que llama su atención de los cambios, formula preguntas sobre estos para ampliar la información y realiza alguna acción que busque responder esa pregunta a través de alguna fuente o procedimiento."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Exploración del entorno natural","21. Interés y asombro por el entorno natural (OA 1)","Consolidando","Al observar a conversar respecto de cambios que ocurren en su entorno natural, el niño o niña explora, manipula o atiende de manera focalizada y sostenida aquello que llama su atención. Además, con la mediación o no de una persona adulta, señala o verbaliza lo que llama su atención de los cambios y formula preguntas sobre estos para ampliar la información."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Exploración del entorno natural","21. Interés y asombro por el entorno natural (OA 1)","Desarrollando","Al observar o conversar respecto de cambios que ocurren en su entorno natural, el niño o niña explora, manipula o atiende de manera focalizada y sostenida aquello que llama su atención y con la mediación o no de una persona adulta, señala o verbaliza lo que llama su atención de los cambios."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Exploración del entorno natural","21. Interés y asombro por el entorno natural (OA 1)","Comenzando","Al observar o conversar respecto de cambios que ocurren en su entorno natural, el niño o niña explora, manipula o atiende de manera focalizada y sostenida aquello que llama su atención."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Exploración del entorno natural","22. Predicciones y explicaciones (OA 2)","Profundizando","A partir de la observación, preferencialmente directa, el niño o niña verbaliza o representa (de manera pictórica o dramática) las posibles causas de fenómenos naturales y predicciones acerca de las consecuencias de fenómenos naturales, basadas en evidencia observable o ideas previas. Además, fundamenta las causas y/o predicciones realizadas, haciendo alusión a si esta explicación podría ser aplicable a otros fenómenos."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Exploración del entorno natural","22. Predicciones y explicaciones (OA 2)","Consolidando","A partir de la observación, preferencialmente directa. el niño o niña verbaliza o representa (de manera pictórica o dramática) las posibles causas de fenómenos naturales y predicciones acerca de las consecuencias de fenómenos naturales, basadas en evidencia observable o ideas previas. Además, fundamenta las causas y/o predicciones realizadas."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Exploración del entorno natural","22. Predicciones y explicaciones (OA 2)","Desarrollando","A partir de la observación, preferencialmente directa, el niño o niña verbaliza o representa (de manera pictórica o dramática) las posibles causas de fenómenos naturales y predicciones acerca de las consecuencias de fenómenos naturales, basadas en evidencia observable o ideas previas."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Exploración del entorno natural","22. Predicciones y explicaciones (OA 2)","Comenzando","A partir de la observación, preferencialmente directa, el niño o niña verbaliza o representa (de manera pictórica o dramática) las posibles causas de fenómenos naturales o predicciones acerca de las consecuencias de fenómenos naturales, basadas en evidencia observable o ideas previas."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Exploración del entorno natural","23. Ambientes sostenibles (OA 8)","Profundizando","El niño o niña realiza cotidianamente acciones de cuidado del medio ambiente, con recordatorios ocasionales o de manera autónoma. Además, a partir de preguntas o comentarios de personas adultas o de manera espontánea, verbaliza los beneficios de algunas de estas acciones para el medio ambiente."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Exploración del entorno natural","23. Ambientes sostenibles (OA 8)","Consolidando","El niño o niña realiza cotidianamente acciones de cuidado del medio ambiente, con recordatorios ocasionales o de manera autónoma. Además, a partir de preguntas o comentarios de personas adultas, nombra algunas acciones que contribuyen al cuidado del medio ambiente."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Exploración del entorno natural","23. Ambientes sostenibles (OA 8)","Desarrollando","El niño o niña realiza cotidianamente acciones de cuidado del medio ambiente, con recordatorios o apoyos ocasionales de una persona adulta."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Exploración del entorno natural","23. Ambientes sostenibles (OA 8)","Comenzando","El niño o niña realiza cotidianamente acciones de cuidado del medio ambiente, con recordatorios o apoyo constantes de una persona adulta."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Exploración del entorno natural","24. Indagación del entorno natural (OA 9)","Profundizando","A partir de la indagación del entorno natural, el niño o niña comunica (de manera verbal, gestual, pictórica, etc.) hallazgos de los procesos indagatorios que responden a una pregunta. Además, expresa verbalmente el proceso o pasos que llevó a cabo para obtener esas evidencias y hallazgos, y los instrumentos que utilizó en el proceso."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Exploración del entorno natural","24. Indagación del entorno natural (OA 9)","Consolidando","A partir de la indagación del entorno natural, el niño o niña comunica (de manera verbal, gestual, pictórica, etc.) hallazgos de los procesos indagatorios que responden a una pregunta, y los instrumentos que utilizó en el proceso."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Exploración del entorno natural","24. Indagación del entorno natural (OA 9)","Desarrollando","A partir de la indagación del entorno natural, el niño o niña comunica (de manera verbal, gestual, pictórica, etc.) observaciones sobre elementos o fenómenos naturales, y los instrumentos que utilizó en el proceso."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Exploración del entorno natural","24. Indagación del entorno natural (OA 9)","Comenzando","A partir de la indagación del entorno natural, el niño o niña comunica (de manera verbal, gestual, pictórica, etc.) observaciones sobre elementos o fenómenos naturales."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Comprensión del Entorno sociocultural","25. Formas de vida de comunidades (OA 2)","Profundizando","A partir de experiencias cotidianas y lúdicas, en que se utilizan diversas fuentes de documentación gráfica y audiovisual, el niño o la niña comunica por medio de algún lenguaje (verbal, pictórico, dramático), algunas costumbres, tradiciones o características de la vivienda, alimentación o vestimenta, de comunidades culturales del presente o del pasado de su territorio local, de otros lugares de Chile y del mundo."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Comprensión del Entorno sociocultural","25. Formas de vida de comunidades (OA 2)","Consolidando","A partir de experiencias cotidianas y lúdicas, en que se utilizan diversas fuentes de documentación gráfica y/o audiovisual, el niño o la niña comunica, por medio de algún lenguaje (verbal, pictórico, dramático), algunas costumbres, tradiciones o características de la vivienda, alimentación o vestimenta, de comunidades culturales del presente o el pasado de su territorio local y de otros lugares de Chile."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Comprensión del Entorno sociocultural","25. Formas de vida de comunidades (OA 2)","Desarrollando","A partir de experiencias cotidianas y lúdicas, en que se utilizan diversas fuentes de documentación gráfica y/o audiovisual, el niño o la niña comunica, por medio de algún lenguaje (verbal, pictórico, dramático), algunas costumbres, tradiciones o características de la vivienda, alimentación o vestimenta, de comunidades culturales del presente o pasado de su territorio local."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Comprensión del Entorno sociocultural","25. Formas de vida de comunidades (OA 2)","Comenzando","A partir de experiencias cotidianas y lúdicas, en que se utilizan diversas fuentes de documentación gráfica y/o audiovisual, el niño o la niña comunica, por medio de algún lenguaje (verbal, pictórico, dramático), algunas tradiciones o costumbres culturales que practican en su familia."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Comprensión del Entorno sociocultural","26. Hechos significativos del pasado (OA 5)","Profundizando","A partir de experiencias cotidianas, lúdicas e investigativas, el niño o la niña representa, mediante algún lenguaje artístico (dramatización, dibujo, modelado, entre otros), hechos significativos del pasado de su familia, su localidad y su país. Además, describe algunos de estos hechos, utilizando fuentes de información como fotografías, videos, utensilios u objetos representativos, entre otros, y verbaliza su opinión sobre los hechos significativos descritos."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Comprensión del Entorno sociocultural","26. Hechos significativos del pasado (OA 5)","Consolidando","A partir de experiencias cotidianas, lúdicas e investigativas, el niño o la niña representa, mediante algún lenguaje artístico (dramatización, dibujo, modelado, entre otros), hechos significativos del pasado de su familia, su localidad y su país. Además, describe algunos de estos hechos, utilizando fuentes de información como fotografías, videos, utensilios u objetos representativos, entre otros, para enriquecer su comprensión y expresión."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Comprensión del Entorno sociocultural","26. Hechos significativos del pasado (OA 5)","Desarrollando","A partir de experiencias cotidianas, lúdicas e investigativas, el niño o la niña representa, mediante algún lenguaje artístico (dramatización, dibujo, modelado, entre otros), hechos significativos del pasado de su familia y su localidad. Además, describe algunos de estos hechos, utilizando fuentes de información como fotografías, videos, utensilios u objetos representativos, entre otros."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Comprensión del Entorno sociocultural","26. Hechos significativos del pasado (OA 5)","Comenzando","A partir de experiencias cotidianas, lúdicas e investigativas, el niño o la niña representa por medio de algún lenguaje artístico (dramatiza, dibuja, modela) hechos significativos del pasado de su familia."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Comprensión del Entorno sociocultural","27. Patrimonio cultural (OA 6)","Profundizando","En experiencias cotidianas, lúdicas e investigativas del patrimonio cultural material e inmaterial, el niño o la niña describe las características de uno o más elementos del patrimonio cultural de su familia y comunidad local, además, comenta el significado, valor o importancia que tiene el patrimonio cultural descrito, para sí mismo(a), su familia o su comunidad local, y comenta y colabora en algunas acciones de cuidado del patrimonio cultural que se le proponen y están a su alcance."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Comprensión del Entorno sociocultural","27. Patrimonio cultural (OA 6)","Consolidando","En experiencias cotidianas, lúdicas e investigativas del patrimonio cultural material e inmaterial, el niño o la niña describe las características de uno o más elementos del patrimonio cultural de su familia y comunidad local, y comenta el significado, valor o importancia que tiene el patrimonio cultural descrito, para sí mismo(a), su familia o su comunidad local, y comenta algunas acciones que se podrían llevar a cabo para el cuidado de este patrimonio."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Comprensión del Entorno sociocultural","27. Patrimonio cultural (OA 6)","Desarrollando","En experiencias cotidianas, lúdicas e investigativas del patrimonio cultural material e inmaterial, el niño o la niña describe las características de uno o más elementos del patrimonio cultural de su familia y comunidad local."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Comprensión del Entorno sociocultural","27. Patrimonio cultural (OA 6)","Comenzando","En experiencias cotidianas, lúdicas e investigativas, el niño o la niña indica, explora o representa (dibuja, dramatiza, modela) elementos que son parte del patrimonio cultural de su familia o comunidad local."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Comprensión del Entorno sociocultural","28. Instituciones y organizaciones (OA 7)","Profundizando","En experiencias cotidianas, lúdicas e indagativas, el niño o la niña nombra, señala o representa (dibuja, modela o dramatiza) diversas instituciones u organizaciones que se encuentran presentes en su localidad o en el país, describiendo sus servicios y funciones, explicando su importancia."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Comprensión del Entorno sociocultural","28. Instituciones y organizaciones (OA 7)","Consolidando","En experiencias cotidianas, lúdicas e indagativas, el niño o la niña nombra, señala o representa (dibuja, modela, dramatiza) diversas instituciones u organizaciones que se encuentran presentes en su localidad o en el país, describiendo sus servicios y funciones."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Comprensión del Entorno sociocultural","28. Instituciones y organizaciones (OA 7)","Desarrollando","En experiencias cotidianas, lúdicas e indagativas, el niño o la niña nombra, señala o representa (dibuja, modela, dramatiza) diversas instituciones u organizaciones que se encuentran presentes en su localidad o en el país."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Comprensión del Entorno sociocultural","28. Instituciones y organizaciones (OA 7)","Comenzando","En experiencias cotidianas, lúdicas e indagativas, el niño o la niña nombra, señala o representa (dibuja, modela o dramatiza) al menos una institución u organización que se encuentre presente en su localidad o en el país."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Pensamiento matemático","29. Patrones (OA 1)","Profundizando","A partir de juegos y situaciones lúdicas, el niño o la niña crea un patrón sonoro, gestual, corporal, pictórico, visual o con objetos concretos, de tres elementos (núcleo ABC, AAB, ABB)."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Pensamiento matemático","29. Patrones (OA 1)","Consolidando","A partir de juegos y situaciones lúdicas, el niño o la niña crea un patrón sonoro, gestual, corporal, pictórico, visual o con objetos concretos, de dos elementos (núcleo AB)."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Pensamiento matemático","29. Patrones (OA 1)","Desarrollando","A partir de juegos y situaciones lúdicas, el niño o la niña extiende un patrón sonoro, gestual, corporal, pictórico visual o con objetos concretos de tres elementos (núcleo ABC, AAB, ABB)."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Pensamiento matemático","29. Patrones (OA 1)","Comenzando","A partir de juegos y situaciones lúdicas, el niño o la niña extiende un patrón sonoro, gestual, corporal, pictórico, visual o con objetos concretos, de dos elementos (núcleo AB)."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Pensamiento matemático","31. Agregar y quitar elementos (OA 8)","Profundizando","A partir de problemas cotidianos o lúdicos de agregar o quitar objetos concretos y pictóricos en un ámbito numérico de 10 elementos, donde la colección inicial está representada por un número, el niño o la niña sobrecuenta o descuenta desde dicho número para determinar correctamente la cantidad resultante. Frente a preguntas o indicaciones dadas, comunica una secuencia de acciones que llevó a cabo para resolver el problema."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Pensamiento matemático","31. Agregar y quitar elementos (OA 8)","Consolidando","A partir de problemas cotidianos o lúdicos de agregar o quitar objetos concretos y pictóricos en un ámbito numérico de 10 elementos, donde la colección inicial está representada por un número, el niño o la niña sobrecuenta o descuenta desde dicho número para determinar correctamente la cantidad resultante. Frente a preguntas o indicaciones dadas, comunica algunas acciones aisladas y puntuales que llevó a cabo para resolver el problema."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Pensamiento matemático","31. Agregar y quitar elementos (OA 8)","Desarrollando","A partir de problemas cotidianos o lúdicos concretos y pictóricos de agregar o quitar objetos en un ámbito numérico de 10 elementos, donde la colección inicial está representada por un número, el niño o la niña sobrecuenta o descuenta desde dicho número para determinar la cantidad resultante, sin embargo este resultado es incorrecto debido a dificultades en el conteo. Frente a preguntas o indicaciones dadas comunica algunas acciones aisladas y puntuales que llevó a cabo para resolver el problema."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Pensamiento matemático","31. Agregar y quitar elementos (OA 8)","Comenzando","A partir de problemas cotidianos o lúdicos concretos y pictóricos de agregar o quitar objetos en un ámbito numérico de 10 elementos, donde la colección inicial está representada por un número, el niño o la niña determina correctamente la cantidad restante, haciendo visibles todos los objetos y luego contándolos de manera ascendente desde el 1. En el caso de quitar objetos, tacha o retira los objetos quitados y luego cuenta de manera ascendente los objetos que quedan desde el 1. Frente a preguntas o indicaciones dadas, comunica algunas acciones aisladas y puntuales que llevó a cabo para resolver el problema."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Pensamiento matemático","32. Figuras 2D y 3D (OA 10)","Profundizando","Durante situaciones lúdicas o de juego, que impliquen observación o manipulación, al comparar dos figuras 3D o dos grupos de figuras, nombra y señala semejanzas o diferencias entre sus atributos geométricos, además, señala o nombra la figura 3D que corresponde a la huella observada en una superficie plana (figura 2D), argumentando dicha correspondencia a partir de algún atributo geométrico, y nombra o señala las figuras 2D (triángulo, cuadrado, rectángulo, círculo) que son presentadas en un formato diferente al tradicional, justificando su respuesta a partir de algún atributo geométrico."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Pensamiento matemático","32. Figuras 2D y 3D (OA 10)","Consolidando","Durante situaciones lúdicas o de juego que impliquen observación o manipulación al comparar dos figuras 3D o dos grupos de figuras 3D, nombra y señala semejanzas y diferencias entre sus atributos geométricos, además, nombra o señala al menos dos figuras 2D que son presentadas en un formato diferente al tradicional (rotadas), justificando su respuesta a partir de algún atributo geométrico."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Pensamiento matemático","32. Figuras 2D y 3D (OA 10)","Desarrollando","Durante situaciones lúdicas o de juego que impliquen observación o manipulación, nombra o señala más de un atributo geométrico de figuras 3D y nombra o señala al menos una figura 2D que se presenta en un formato diferente al tradicional (rotada)."
+"INTERACCIÓN Y COMPRENSIÓN DEL ENTORNO","Pensamiento matemático","32. Figuras 2D y 3D (OA 10)","Comenzando","Durante situaciones lúdicas o de juego, que impliquen observación o manipulación, nombra o señala al menos un atributo de figuras 3D, y nombra o señala figuras 2D solo cuando son presentadas en su formato tradicional."
+`;
+
+            let matrixData = {};
+            const selections = {};
+            let counts = { total: 0, byNucleo: {} };
+
+            // Parse CSV to JSON
+            function parseCSV(csv) {
+                const lines = csv.trim().split('\n');
+                const result = {};
+                
+                // Skip header (i=1)
+                for (let i = 1; i < lines.length; i++) {
+                    const row = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                    if (!row) continue;
+                    
+                    const ambito = row[0].replace(/"/g, '');
+                    const nucleo = row[1].replace(/"/g, '');
+                    const oa = row[2].replace(/"/g, '');
+                    const nivel = row[3].replace(/"/g, '');
+                    const desc = row[4].replace(/"/g, '');
+
+                    if (!result[ambito]) result[ambito] = {};
+                    if (!result[ambito][nucleo]) result[ambito][nucleo] = {};
+                    if (!result[ambito][nucleo][oa]) result[ambito][nucleo][oa] = {};
+                    
+                    result[ambito][nucleo][oa][nivel] = desc;
+                }
+                return result;
+            }
+
+            // Calculate total OAs
+            function calculateCounts() {
+                counts.total = 0;
+                counts.byNucleo = {};
+
+                Object.keys(matrixData).forEach(ambito => {
+                    Object.keys(matrixData[ambito]).forEach(nucleo => {
+                        const oaCount = Object.keys(matrixData[ambito][nucleo]).length;
+                        counts.byNucleo[nucleo] = oaCount;
+                        counts.total += oaCount;
+                    });
+                });
+            }
+
+            // Initialize
+            function init() {
+                matrixData = parseCSV(csvDataRaw);
+                calculateCounts();
+                renderNavigation();
+                renderMatrix();
+                
+                // Initial render of empty preview
+                updateReport();
+                
+                // Set default date
+                const now = new Date();
+                const dateString = now.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+                const dateInput = document.getElementById('print-date');
+                if(dateInput) dateInput.textContent = dateString;
+            }
+
+            // Render Sidebar Navigation
+            function renderNavigation() {
+                const navContainer = document.getElementById('nav-container');
+                navContainer.innerHTML = '';
+                
+                Object.keys(matrixData).forEach(ambito => {
+                    const ambitoTitle = document.createElement('div');
+                    ambitoTitle.className = "text-xs font-bold text-slate-500 mt-4 mb-2 pl-2";
+                    ambitoTitle.textContent = ambito;
+                    navContainer.appendChild(ambitoTitle);
+
+                    Object.keys(matrixData[ambito]).forEach(nucleo => {
+                        const btn = document.createElement('button');
+                        // Added ID for dynamic styling updates
+                        btn.id = `nav-btn-${nucleo.replace(/\s+/g, '-')}`;
+                        btn.className = "w-full text-left px-3 py-2 text-sm text-slate-600 rounded hover:bg-slate-100 transition-colors truncate border-l-2 border-transparent nav-btn-pending";
+                        btn.textContent = nucleo;
+                        btn.onclick = () => {
+                            const el = document.getElementById(`nucleo-${nucleo.replace(/\s+/g, '-')}`);
+                            if (el) {
+                                el.scrollIntoView({ behavior: 'smooth' });
+                            }
+                        };
+                        navContainer.appendChild(btn);
+                    });
+                });
+            }
+
+            // Render Main Matrix
+            function renderMatrix() {
+                const container = document.getElementById('matrix-container');
+                container.innerHTML = '';
+
+                Object.keys(matrixData).forEach(ambito => {
+                    Object.keys(matrixData[ambito]).forEach(nucleo => {
+                        
+                        const section = document.createElement('section');
+                        section.id = `nucleo-${nucleo.replace(/\s+/g, '-')}`;
+                        section.className = "bg-white rounded-xl shadow-sm border border-slate-100 mb-8";
+                        
+                        const header = document.createElement('div');
+                        header.className = "bg-slate-50 border-b border-slate-100 px-6 py-4 rounded-t-xl";
+                        header.innerHTML = `
+                            <span class="text-xs font-bold text-blue-500 uppercase tracking-wide">${ambito}</span>
+                            <h2 class="text-xl font-bold text-slate-800">${nucleo}</h2>
+                        `;
+                        section.appendChild(header);
+
+                        const content = document.createElement('div');
+                        content.className = "p-6 space-y-8";
+
+                        Object.keys(matrixData[ambito][nucleo]).forEach((oa, index) => {
+                            const oaContainer = document.createElement('div');
+                            
+                            // OA Header
+                            const oaTitle = document.createElement('h3');
+                            oaTitle.className = "font-medium text-slate-900 mb-4 flex items-start gap-2";
+                            oaTitle.innerHTML = `<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded mt-0.5">OA</span> ${oa}`;
+                            oaContainer.appendChild(oaTitle);
+
+                            // Grid for Levels
+                            const grid = document.createElement('div');
+                            grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3";
+
+                            const levels = ['Comenzando', 'Desarrollando', 'Consolidando', 'Profundizando'];
+                            const colors = {
+                                'Comenzando': 'hover:bg-orange-50 hover:border-orange-200',
+                                'Desarrollando': 'hover:bg-yellow-50 hover:border-yellow-200',
+                                'Consolidando': 'hover:bg-green-50 hover:border-green-200',
+                                'Profundizando': 'hover:bg-blue-50 hover:border-blue-200'
+                            };
+
+                            levels.forEach(level => {
+                                if (!matrixData[ambito][nucleo][oa][level]) return;
+
+                                const card = document.createElement('button');
+                                const levelLower = level.toLowerCase();
+                                card.className = `level-card btn-${levelLower} ${colors[level]} w-full text-left p-3 rounded-lg border border-slate-200 text-xs text-slate-600 relative group`;
+                                card.dataset.oa = oa;
+                                card.dataset.level = level;
+                                // Native tooltip
+                                card.title = matrixData[ambito][nucleo][oa][level];
+                                
+                                const fullDesc = matrixData[ambito][nucleo][oa][level];
+                                
+                                card.innerHTML = `
+                                    <div class="font-bold mb-1 capitalize">${level}</div>
+                                    <div class="text-[10px] leading-tight opacity-70 line-clamp-3 overflow-hidden text-ellipsis">${fullDesc}</div>
+                                    <div class="custom-tooltip">
+                                        ${fullDesc}
+                                    </div>
+                                `;
+
+                                card.onclick = () => selectLevel(ambito, nucleo, oa, level, card);
+                                grid.appendChild(card);
+                            });
+
+                            oaContainer.appendChild(grid);
+                            content.appendChild(oaContainer);
+                            
+                            if(index < Object.keys(matrixData[ambito][nucleo]).length - 1) {
+                                const hr = document.createElement('hr');
+                                hr.className = "border-slate-100 my-6";
+                                content.appendChild(hr);
+                            }
+                        });
+
+                        section.appendChild(content);
+                        container.appendChild(section);
+                    });
+                });
+            }
+
+            // Handle Level Selection
+            window.selectLevel = function(ambito, nucleo, oa, level, cardElement) {
+                if (!selections[ambito]) selections[ambito] = {};
+                if (!selections[ambito][nucleo]) selections[ambito][nucleo] = {};
+                
+                selections[ambito][nucleo][oa] = {
+                    level: level,
+                    text: matrixData[ambito][nucleo][oa][level]
+                };
+
+                const siblings = cardElement.parentElement.children;
+                for (let sibling of siblings) {
+                    sibling.classList.remove('selected', 'ring-2', 'ring-offset-1');
+                }
+                cardElement.classList.add('selected');
+
+                updateReport();
+            }
+
+            // Generate Report Text & Update Progress
+            function updateReport() {
+                const reportContainer = document.getElementById('report-content');
+                
+                let html = "";
+                let printHtml = "";
+                let hasContent = false;
+                let totalSelected = 0;
+
+                Object.keys(selections).forEach(ambito => {
+                    Object.keys(selections[ambito]).forEach(nucleo => {
+                        const selectedOAs = Object.keys(selections[ambito][nucleo]);
+                        const numSelected = selectedOAs.length;
+                        
+                        if(numSelected > 0) {
+                            hasContent = true;
+                            totalSelected += numSelected;
+                            
+                            const groupHtmlStart = `
+                                <div class="mb-6">
+                                    <h4 class="font-bold text-slate-800 text-sm border-b border-slate-200 pb-1 mb-2 uppercase">${nucleo}</h4>
+                                    <ul class="space-y-3 text-sm text-slate-600">
+                            `;
+                            const groupHtmlEnd = `</ul></div>`;
+                            
+                            const pdfGroupStart = `
+                                <div style="margin-bottom: 24px; break-inside: avoid;">
+                                    <h3 style="font-weight: bold; text-transform: uppercase; font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; color: #1e293b;">${nucleo}</h3>
+                                    <ul style="list-style-type: none; padding: 0;">
+                            `;
+                            const pdfGroupEnd = `</ul></div>`;
+
+                            let itemsHtml = "";
+                            let pdfItemsHtml = "";
+                            
+                            selectedOAs.forEach(oa => {
+                                const data = selections[ambito][nucleo][oa];
+                                
+                                itemsHtml += `
+                                    <li class="bg-slate-50 p-3 rounded border border-slate-100">
+                                        <span class="text-xs font-bold text-blue-600 block mb-1">${data.level}</span>
+                                        ${data.text}
+                                    </li>
+                                `;
+
+                                pdfItemsHtml += `
+                                    <li style="margin-bottom: 12px; font-size: 12px;">
+                                        <div style="font-weight: bold; color: #2563eb; margin-bottom: 2px;">${oa} - ${data.level}</div>
+                                        <div style="color: #334155; text-align: justify;">${data.text}</div>
+                                    </li>
+                                `;
+                            });
+
+                            html += groupHtmlStart + itemsHtml + groupHtmlEnd;
+                            printHtml += pdfGroupStart + pdfItemsHtml + pdfGroupEnd;
+                        }
+
+                        // Update Navigation Colors per Nucleo
+                        const btnId = `nav-btn-${nucleo.replace(/\s+/g, '-')}`;
+                        const btn = document.getElementById(btnId);
+                        if (btn) {
+                            const totalInNucleo = counts.byNucleo[nucleo];
+                            if (numSelected === 0) {
+                                btn.className = "w-full text-left px-3 py-2 text-sm text-slate-600 rounded hover:bg-slate-100 transition-colors truncate border-l-2 border-transparent nav-btn-pending";
+                            } else if (numSelected < totalInNucleo) {
+                                btn.className = "w-full text-left px-3 py-2 text-sm text-amber-700 rounded transition-colors truncate border-l-2 nav-btn-progress font-medium";
+                            } else {
+                                btn.className = "w-full text-left px-3 py-2 text-sm text-green-700 rounded transition-colors truncate border-l-2 nav-btn-complete font-medium";
+                            }
+                        }
+                    });
+                });
+
+                // Update Progress Bar
+                const percentage = Math.round((totalSelected / counts.total) * 100);
+                document.getElementById('progress-bar').style.width = `${percentage}%`;
+                document.getElementById('progress-percent').textContent = `${percentage}%`;
+                document.getElementById('progress-count').textContent = `${totalSelected}/${counts.total} Indicadores Seleccionados`;
+
+                // Update Report Content
+                if (!hasContent) {
+                    reportContainer.innerHTML = '<div class="text-slate-400 text-center text-sm italic mt-10">Selecciona niveles de progreso para comenzar a generar el informe.</div>';
+                    document.getElementById('print-content').innerHTML = '<p class="italic text-slate-500 text-center py-8">No se han seleccionado indicadores.</p>';
+                } else {
+                    reportContainer.innerHTML = html;
+                    document.getElementById('print-content').innerHTML = printHtml;
+                }
+            }
+
+            // Update PDF data fields continuously
+            function updatePDFHeaderData() {
+                const safeVal = (id) => {
+                    const el = document.getElementById(id);
+                    return el ? el.value : "________";
+                };
+
+                const setPdfText = (id, val) => {
+                    const el = document.getElementById(id);
+                    if(el) el.textContent = val || "________";
+                }
+
+                setPdfText('pdf-student-name', safeVal('studentName'));
+                setPdfText('pdf-student-grade', safeVal('studentGrade'));
+                setPdfText('pdf-educator-name-header', safeVal('educatorName'));
+                
+                setPdfText('pdf-sign-educator-name', safeVal('educatorName'));
+                setPdfText('pdf-sign-director-name', safeVal('directorName'));
+                
+                const rawDate = document.getElementById('deliveryDate').value;
+                if (rawDate) {
+                    const dateObj = new Date(rawDate + 'T00:00:00');
+                    setPdfText('pdf-delivery-date', dateObj.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' }));
+                } else {
+                    setPdfText('pdf-delivery-date', "________");
+                }
+
+                setPdfText('pdf-eval-period', safeVal('evalPeriod'));
+            }
+
+            ['studentName', 'studentGrade', 'educatorName', 'directorName', 'deliveryDate', 'evalPeriod'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.addEventListener('input', updatePDFHeaderData);
+            });
+
+            // Make global for button onclicks
+            window.exportToPDF = function() {
+                updatePDFHeaderData();
+                updateReport();
+
+                const element = document.getElementById('pdf-source');
+                const studentName = document.getElementById('studentName').value.trim() || "Estudiante";
+                const btn = document.getElementById('btn-export');
+                
+                const originalText = btn.innerHTML;
+                btn.innerHTML = `
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Generando...
+                `;
+                btn.disabled = true;
+
+                const opt = {
+                    margin:       [15, 15, 15, 15], 
+                    filename:     `Informe_${studentName.replace(/[^a-z0-9]/gi, '_')}.pdf`,
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { scale: 2, useCORS: true, logging: false },
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                    pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+                };
+
+                const cloneWrapper = document.createElement('div');
+                cloneWrapper.style.position = 'absolute';
+                cloneWrapper.style.top = '-9999px';
+                cloneWrapper.style.left = '-9999px';
+                cloneWrapper.style.width = '780px'; 
+                
+                const clone = element.cloneNode(true);
+                cloneWrapper.appendChild(clone);
+                document.body.appendChild(cloneWrapper);
+
+                html2pdf().set(opt).from(clone).save().then(() => {
+                    document.body.removeChild(cloneWrapper);
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }).catch(err => {
+                    console.error("Error generating PDF:", err);
+                    alert("Hubo un error al generar el PDF. Por favor intenta de nuevo.");
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                });
+            }
+
+            window.copyToClipboard = function() {
+                const container = document.getElementById('report-content');
+                if (!container.innerText.trim()) return;
+
+                let text = "";
+                const groups = container.querySelectorAll('div.mb-6');
+                
+                groups.forEach(group => {
+                    const title = group.querySelector('h4').innerText;
+                    text += `\n[${title}]\n`;
+                    const items = group.querySelectorAll('li');
+                    items.forEach(item => {
+                        const cleanText = item.innerText.replace(/\n/g, ' ').replace(/\s+/g, ' ');
+                        text += `- ${cleanText}\n`;
+                    });
+                });
+                
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+
+                try {
+                    const successful = document.execCommand('copy');
+                    if(successful) alert("¡Informe copiado al portapapeles!");
+                    else throw new Error("Copy failed");
+                } catch (err) {
+                    console.error('Fallback copy failed', err);
+                    alert('No se pudo copiar automáticamente.');
+                }
+                document.body.removeChild(textArea);
+            }
+
+            // Start initialization
+            init();
+        });
+        
+        // File upload handler
+        document.getElementById('logoUpload').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const imgData = e.target.result;
+                    document.getElementById('preview-logo-settings').src = imgData;
+                    document.getElementById('pdf-logo').src = imgData;
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
+</body>
+</html>
