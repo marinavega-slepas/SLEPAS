@@ -11,6 +11,34 @@ document.addEventListener('DOMContentLoaded', () => {
     initChart();
 
     document.getElementById('generate-pdf-btn').addEventListener('click', generatePDF);
+
+    // View Switcher Logic
+    const viewBtns = document.querySelectorAll('.tool-btn[data-view]');
+    viewBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Remove active class from all
+            viewBtns.forEach(b => b.classList.remove('active'));
+            // Add active to clicked
+            btn.classList.add('active');
+
+            const view = btn.dataset.view;
+            document.body.classList.remove('view-mobile', 'view-tablet');
+
+            if (view === 'mobile') {
+                document.body.classList.add('view-mobile');
+            } else if (view === 'tablet') {
+                document.body.classList.add('view-tablet');
+            }
+        });
+    });
+
+    // Theme Toggle Logic
+    const themeBtn = document.getElementById('theme-btn');
+    themeBtn.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+        themeBtn.innerHTML = isDark ? '☀️' : '🌙';
+    });
 });
 
 function generatePDF() {
