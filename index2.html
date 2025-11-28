@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plataforma de Reportes Socioemocionales</title>
+
+    <!-- Google Fonts: Outfit for a modern, clean look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- html2pdf.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <header class="main-header">
+            <div class="logo-area">
+                <h1>Reporte Socioemocional</h1>
+                <p class="subtitle">Evaluación y Seguimiento de Habilidades</p>
+            </div>
+        </header>
+
+        <main id="main-content">
+            <!-- Student Info Section -->
+            <section id="student-info" class="card">
+                <h2>Información del Estudiante</h2>
+                <form id="info-form">
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label for="studentName">Nombre Completo</label>
+                            <input type="text" id="studentName" placeholder="Ej. Juan Pérez" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="studentGrade">Grado/Curso</label>
+                            <select id="studentGrade" required>
+                                <option value="" disabled selected>Seleccione un nivel</option>
+                                <option value="preescolar">Pre-escolar (PK - K)</option>
+                                <option value="basica1">1° - 4° Básico</option>
+                                <option value="basica2">5° - 8° Básico</option>
+                                <option value="media">Enseñanza Media</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="reportDate">Fecha</label>
+                            <input type="date" id="reportDate" required>
+                        </div>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Rubric Section -->
+            <section id="rubric-section" class="card">
+                <h2>Evaluación de Habilidades</h2>
+                <p class="instruction-text">Seleccione el nivel de logro para cada indicador.</p>
+                <div id="rubric-container">
+                    <!-- Rubric items will be injected here by JS -->
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section id="results-section" class="card">
+                <h2>Resultados Gráficos</h2>
+                <div class="chart-container">
+                    <canvas id="skillsChart"></canvas>
+                </div>
+                <div id="chart-interpretation" class="interpretation-box">
+                    <!-- Interpretation will be injected here -->
+                    <p class="placeholder-text">Complete la rúbrica para ver el análisis.</p>
+                </div>
+            </section>
+
+            <!-- Suggestions Section -->
+            <section id="suggestions-section" class="card">
+                <h2>Sugerencias de Actividades</h2>
+                <div id="activities-container">
+                    <p class="placeholder-text">Seleccione un grado y complete la rúbrica para ver sugerencias.</p>
+                </div>
+            </section>
+
+            <!-- Actions -->
+            <div class="actions-bar">
+                <button id="generate-pdf-btn" class="btn btn-primary">
+                    <span class="icon">📄</span> Descargar Reporte PDF
+                </button>
+            </div>
+        </main>
+
+        <footer class="main-footer">
+            <p>&copy; 2025 Plataforma de Educación Socioemocional</p>
+        </footer>
+    </div>
+
+    <!-- App Logic -->
+    <script src="js/app.js"></script>
+</body>
+
+</html>
